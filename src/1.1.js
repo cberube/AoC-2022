@@ -3,36 +3,13 @@ const path = require('path')
 const R = require('ramda')
 
 const inputTools = require('./lib/inputTools')
+const day1 = require('./lib/day1')
 
 const dataPath = path.join(__dirname, process.argv[2])
 const data = inputTools.loadInputFile(dataPath)
 
 async function application() {
-  // Parse the data into lines
-  const lines = data.split('\n')
-  const elfList = []
-  let elf = 0
-
-  // Process each line one by one
-  while (lines.length > 0) {
-    const line = lines.shift()
-
-    // If the line is blank...
-    if (line === '') {
-      // Store the elf's calorie count, if available
-      if (elf > 0) {
-        elfList.push(elf)
-      }
-
-      // And reset the calorie count
-      elf = 0
-      continue
-    }
-
-    // ...Otherwise convert the line into a number and
-    // add it to the running total for the current elf
-    elf += parseInt(line, 10)
-  }
+  const elfList = day1.parseElfSnackData(data)
 
   // Find the maximum calorie amount
   const max = elfList.reduce((a, b) => Math.max(a, b), 0)
