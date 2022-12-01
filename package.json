@@ -1,0 +1,9 @@
+{
+  "name": "AOC-2022",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "ramda": "^0.28.0"
+  }
+}
