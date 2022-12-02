@@ -12,7 +12,8 @@ async function application() {
   const elfList = day1.parseElfSnackData(data)
 
   // Find the maximum calorie amount
-  const max = elfList.reduce((a, b) => Math.max(a, b), 0)
+  const max = elfList.reduce(R.max, 0)
+  
   console.log(max)
 }
 

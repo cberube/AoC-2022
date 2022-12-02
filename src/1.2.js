@@ -11,17 +11,14 @@ const data = inputTools.loadInputFile(dataPath)
 async function application() {
   const elfList = day1.parseElfSnackData(data)
 
-  // Sort the list (note that Array.sort mutates the array
-  // and returns a reference to it, but it is handy to have
-  // a variable with a clearer name and this lays the ground-
-  // work for an immutable approach)
-  const sortedElfList = elfList.sort((a, b) => b - a)
+  // Sort the list
+  const sortedElfList = R.sort((a, b) => b - a, elfList)
 
   // Take the top three items
-  const topThreeElves = sortedElfList.slice(0, 3)
+  const topThreeElves = R.take(3, sortedElfList)
 
   // Add them up
-  const sum = topThreeElves.reduce((a, b) => a + b, 0)
+  const sum = R.sum(topThreeElves)
   
   console.log(sum)
 }
