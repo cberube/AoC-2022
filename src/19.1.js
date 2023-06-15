@@ -40,6 +40,17 @@ const canAfford = (resources, cost) => {
 
 const makeId = (resources, robots) => Object.values(resources).concat(Object.values(robots)).join('.')
 
+const scoreState = (resources, robots) =>
+  0
+  // + resources.ore
+  // + resources.clay * 1e2
+  // + resources.obsidian * 1e4
+  // + robots.ore * 1e6
+  // + robots.clay * 1e8
+  // + robots.obsidian * 1e10
+  + robots.geode * 1e12
+  + resources.geode * 1e14
+
 const simulate = blueprint => {
   const allStates = new Set()
 
@@ -55,6 +66,8 @@ const simulate = blueprint => {
   let nextBestRobots = { ...bestRobots }
 
   for (let i = 0; i < 24; i++) {
+    let stackBestGeodes = 0
+
     console.log(`------ Minute ${i + 1} ------`)
     console.log(`${currentStateStack.length} nodes`)
 
@@ -75,13 +88,17 @@ const simulate = blueprint => {
       nextResources.obsidian += (state.robots.obsidian ?? 0)
       nextResources.geode += (state.robots.geode ?? 0)
       nextBestGeodes = Math.max(nextBestGeodes, nextResources.geode)
+      stackBestGeodes = Math.max(nextResources.geode, nextResources.geode)
+
+      if (nextResources.geode < stackBestGeodes) return nextStates
 
       //console.log(i, nextRobots)
 
       // Add the "do nothing" state
       const id = makeId(nextResources, nextRobots)
       if (!allStates.has(id)) {
-        nextStates[id] = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        const score = scoreState(nextResources, nextRobots)
+        nextStates[id] = { resources: { ...nextResources }, robots: { ...nextRobots }, score }
         allStates.add(id)
       }
 
@@ -96,7 +113,8 @@ const simulate = blueprint => {
 
         const id = makeId(nextState.resources, nextState.robots)
         if (!allStates.has(id)) {
-          nextStates[id] = (nextState)
+          nextState.score = scoreState(nextState.resources, nextState.robots)
+          nextStates[id] = nextState
           allStates.add(id)
         }
       }
@@ -111,7 +129,8 @@ const simulate = blueprint => {
         nextState.resources.obsidian -= blueprint.obsidian.obsidian ?? 0
         const id = makeId(nextState.resources, nextState.robots)
         if (!allStates.has(id)) {
-          nextStates[id] = (nextState)
+          nextState.score = scoreState(nextState.resources, nextState.robots)
+          nextStates[id] = nextState
           allStates.add(id)
         }
       }
@@ -126,7 +145,8 @@ const simulate = blueprint => {
         nextState.resources.obsidian -= blueprint.clay.obsidian ?? 0
         const id = makeId(nextState.resources, nextState.robots)
         if (!allStates.has(id)) {
-          nextStates[id] = (nextState)
+          nextState.score = scoreState(nextState.resources, nextState.robots)
+          nextStates[id] = nextState
           allStates.add(id)
         }
       }
@@ -141,7 +161,8 @@ const simulate = blueprint => {
         nextState.resources.obsidian -= blueprint.ore.obsidian ?? 0
         const id = makeId(nextState.resources, nextState.robots)
         if (!allStates.has(id)) {
-          nextStates[id] = (nextState)
+          nextState.score = scoreState(nextState.resources, nextState.robots)
+          nextStates[id] = nextState
           allStates.add(id)
         }
       }
@@ -149,6 +170,7 @@ const simulate = blueprint => {
       return nextStates
     }, {})
 
+    /*
     currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode > bestGeodes)
 
     if (currentStateStack.length === 0) {
@@ -182,11 +204,18 @@ const simulate = blueprint => {
     if (currentStateStack.length === 0) {
       currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode >= bestGeodes)
     }
+    */
+
+    currentStateStack = Object.values(nextStateStack)
+    currentStateStack.sort((a, b) => b.score - a.score)
+    //console.log(currentStateStack)
+    const bestScore = currentStateStack[0].score
+    currentStateStack = R.takeWhile(s => s.score == bestScore, currentStateStack)
 
     bestGeodes = nextBestGeodes
     bestRobots = { ...nextBestRobots }
 
-    console.log(currentStateStack.length, Object.values(nextStateStack).length, bestGeodes, allStates.size)
+    // console.log(currentStateStack.length, Object.values(nextStateStack).length, bestGeodes, allStates.size, bestScore)
   }
 
   return bestGeodes
