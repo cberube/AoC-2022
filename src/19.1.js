@@ -50,6 +50,9 @@ const simulate = blueprint => {
 
   let currentStateStack = [{ resources, robots }]
   let bestGeodes = 0
+  let bestRobots = { geode: 0, obsidian: 0 }
+  let nextBestGeodes = 0
+  let nextBestRobots = { ...bestRobots }
 
   for (let i = 0; i < 24; i++) {
     console.log(`------ Minute ${i + 1} ------`)
@@ -71,6 +74,7 @@ const simulate = blueprint => {
       nextResources.clay += (state.robots.clay ?? 0)
       nextResources.obsidian += (state.robots.obsidian ?? 0)
       nextResources.geode += (state.robots.geode ?? 0)
+      nextBestGeodes = Math.max(nextBestGeodes, nextResources.geode)
 
       //console.log(i, nextRobots)
 
@@ -85,9 +89,11 @@ const simulate = blueprint => {
       if (afforable.geode) {
         const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
         nextState.robots.geode += 1
+        nextBestRobots.geode = Math.max(nextState.robots.geode, nextBestRobots.geode)
         nextState.resources.ore -= blueprint.geode.ore ?? 0
         nextState.resources.clay -= blueprint.geode.clay ?? 0
         nextState.resources.obsidian -= blueprint.geode.obsidian ?? 0
+
         const id = makeId(nextState.resources, nextState.robots)
         if (!allStates.has(id)) {
           nextStates[id] = (nextState)
@@ -98,6 +104,8 @@ const simulate = blueprint => {
       if (afforable.obsidian) {
         const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
         nextState.robots.obsidian += 1
+        nextBestRobots.obsidian = Math.max(nextState.robots.obsidian, nextBestRobots.obsidian)
+
         nextState.resources.ore -= blueprint.obsidian.ore ?? 0
         nextState.resources.clay -= blueprint.obsidian.clay ?? 0
         nextState.resources.obsidian -= blueprint.obsidian.obsidian ?? 0
@@ -111,6 +119,8 @@ const simulate = blueprint => {
       if (afforable.clay) {
         const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
         nextState.robots.clay += 1
+        nextBestRobots.clay = Math.max(nextState.robots.clay, nextBestRobots.clay)
+
         nextState.resources.ore -= blueprint.clay.ore ?? 0
         nextState.resources.clay -= blueprint.clay.clay ?? 0
         nextState.resources.obsidian -= blueprint.clay.obsidian ?? 0
@@ -124,6 +134,8 @@ const simulate = blueprint => {
       if (afforable.ore) {
         const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
         nextState.robots.ore += 1
+        nextBestRobots.ore = Math.max(nextState.robots.ore, nextBestRobots.ore)
+
         nextState.resources.ore -= blueprint.ore.ore ?? 0
         nextState.resources.clay -= blueprint.ore.clay ?? 0
         nextState.resources.obsidian -= blueprint.ore.obsidian ?? 0
@@ -137,17 +149,42 @@ const simulate = blueprint => {
       return nextStates
     }, {})
 
-    //console.log('un')
     currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode > bestGeodes)
+
+    if (currentStateStack.length === 0) {
+      currentStateStack = Object.values(nextStateStack).filter(state =>
+        state.robots > bestRobots.geode
+        && state.robots.obsidian >= bestRobots.obsidian
+        && state.robots.clay >= bestRobots.clay
+        && state.robots.ore >= bestRobots.ore
+      )
+    }
+
+    if (currentStateStack.length === 0) {
+      currentStateStack = Object.values(nextStateStack).filter(state =>
+        state.robots.obsidian > bestRobots.obsidian
+        && state.robots.clay >= bestRobots.clay
+        && state.robots.ore >= bestRobots.ore
+      )
+    }
+
+    if (currentStateStack.length === 0) {
+      currentStateStack = Object.values(nextStateStack).filter(state =>
+        state.robots.clay > bestRobots.clay
+        && state.robots.ore >= bestRobots.ore
+      )
+    }
+
+    if (currentStateStack.length === 0) {
+      currentStateStack = Object.values(nextStateStack).filter(state => state.robots.ore > bestRobots.ore)
+    }
+
     if (currentStateStack.length === 0) {
       currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode >= bestGeodes)
     }
 
-    //console.log(currentStateStack)
-    //console.log('###')
-    //console.log('-un')
-    bestGeodes = currentStateStack.reduce((geodes, state) => Math.max(geodes, state.resources.geode), 0)
-    //Object.keys(nextStateStack).forEach(state => allStates.add(state))
+    bestGeodes = nextBestGeodes
+    bestRobots = { ...nextBestRobots }
 
     console.log(currentStateStack.length, Object.values(nextStateStack).length, bestGeodes, allStates.size)
   }
