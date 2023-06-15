@@ -100,50 +100,80 @@ function application() {
     )
   }
 
+  // True if range B completely contains range A
+  const rangeContains = (a, b) => b[0] <= a[0] && b[1] >= a[1]
+
+  // True if A is entirely before or entirely after B
+  const rangeDisjoint = (a, b) => a[1] < b[0] || a[0] > b[1]
+
+  // True if the the beginning or end of A is within B
+  const rangesIntersect = (a, b) => (a[0] >= b[0] && a[0] <= b[1]) || (a[1] >= b[0] && a[1] <= b[1])
+
+  const mergeRanges = (a, b) => ([ Math.min(a[0], b[0]), Math.max(a[1], b[1])])
+
   const determineCoverageAtRow = (extent, row) => {
     let coveredSet = new Set()
     let progress = 0
 
-    ///*
-    for (let x = extent.left; x <= extent.right; x++) {
-      const isCovered = isPointCovered(x, row, sensorList)
-      const hasBeacon = R.propOr(false, pointToKey({ x, y: row }), beaconMap)
-      //`if (hasBeacon) console.log('HAS BEACON')
-      if (isCovered && !hasBeacon) coveredSet.add(pointToKey({ x, y: row }))
-      //coveredMap[pointToKey({ x, y: row })] = isCovered || hasBeacon
+    let rangeList = [ ]
 
-      progress++
-      if (progress % 10000 == 0) {
-        console.log(`${extent.left} <- ${x} -> ${extent.right}`)
-      }
-    }
-    //*/
-
-    /*
     sensorList.forEach(data => {
-      for (let x = data.extent.left; x <= data.extent.right; x++) {
-        const delta = {
-          x: Math.abs(data.sensor.x - x),
-          y: Math.abs(data.sensor.y - row)
-        }
+        const dy = Math.abs(data.sensor.y - row)
 
-        const hasBeacon = R.propOr(false, pointToKey({ x, y: row }), beaconMap)
+        const radiusAtRow = data.distance - dy
 
-        if (delta.x + delta.y <= data.distance && !hasBeacon) {
-          coveredSet.add(pointToKey({ x, y: row }))
-        }
-      }
+        if (radiusAtRow <= 0) return
+
+        const newRange = [data.sensor.x - radiusAtRow, data.sensor.x + radiusAtRow]
+        
+        const nextRangeList = []
+        let merged = false
+
+        rangeList.forEach((range, idx) => {
+            if (merged) {
+                nextRangeList.push(range)
+                return
+            }
+
+            if (rangesIntersect(range, newRange)) {
+                console.log('Intersection', range, newRange)
+                nextRangeList.push(mergeRanges(range, newRange))
+                merged = true
+                return
+            }
+
+            nextRangeList.push(range)
+        })
+
+        if (!merged) nextRangeList.push(newRange)
+
+        rangeList = nextRangeList
+        console.log(rangeList)
+        console.log('---')
     })
-    */
 
-    //console.log(coveredMap)
+    const coveredCount = rangeList.map(range => Math.abs(range[0] - range[1])).reduce((a, x) => a + x, 0)
 
-    return coveredSet.size
+    return coveredCount
   }
 
   console.log(sensorList)
   console.log(mapExtent)
   console.log(beaconMap)
+
+  const range = {
+    x: 4000000, //20,
+    y: 4000000 //20
+  }
+
+  /*
+  const possibleSet = new Set()
+  for (let y = 0; y<= range.y; y++) {
+    for (let x = 0; x <= range.x; x++) {
+        possibleSet.add(pointToKey({ x, y }))
+    }
+  }
+  */
 
   //console.log(determineCoverageAtRow(mapExtent, 10))
   console.log(determineCoverageAtRow(mapExtent, 2000000))

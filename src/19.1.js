@@ -30,17 +30,144 @@ const parseBlueprints = R.pipe(
   R.map(R.map(R.map(x => parseInt(x, 10)))),
 )
 
-const simulate = blueprint => {
-  const resources = R.zipObj(robotTypes, R.repeat(0, robotTypes.length))
-  const robots = R.zipObj(robotTypes, R.repeat(0, robotTypes.length))
+const canAfford = (resources, cost) => {
+  if ((cost.ore ?? 0) > resources.ore) return false
+  if ((cost.clay ?? 0) > resources.clay) return false
+  if ((cost.obsidian ?? 0) > resources.obsidian) return false
 
-  console.log(resources, robots)
+  return true
+}
+
+const makeId = (resources, robots) => Object.values(resources).concat(Object.values(robots)).join('.')
+
+const simulate = blueprint => {
+  const allStates = new Set()
+
+  let resources = R.zipObj(robotTypes, R.repeat(0, robotTypes.length))
+  let robots = R.zipObj(robotTypes, R.repeat(0, robotTypes.length))
+
+  robots.ore = 1
+
+  let currentStateStack = [{ resources, robots }]
+  let bestGeodes = 0
+
+  for (let i = 0; i < 24; i++) {
+    console.log(`------ Minute ${i + 1} ------`)
+    console.log(`${currentStateStack.length} nodes`)
+
+    const nextStateStack = currentStateStack.reduce((nextStates, state) => {
+      const nextResources = { ...state.resources }
+      const nextRobots = { ...state.robots }
+
+      const afforable = {
+        ore: canAfford(state.resources, blueprint.ore),
+        clay: canAfford(state.resources, blueprint.clay),
+        obsidian: canAfford(state.resources, blueprint.obsidian),
+        geode: canAfford(state.resources, blueprint.geode)
+      }
+
+      // Add resources from our existing robots
+      nextResources.ore += (state.robots.ore ?? 0)
+      nextResources.clay += (state.robots.clay ?? 0)
+      nextResources.obsidian += (state.robots.obsidian ?? 0)
+      nextResources.geode += (state.robots.geode ?? 0)
+
+      //console.log(i, nextRobots)
+
+      // Add the "do nothing" state
+      const id = makeId(nextResources, nextRobots)
+      if (!allStates.has(id)) {
+        nextStates[id] = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        allStates.add(id)
+      }
+
+      // Split the state based on which robots we can afford
+      if (afforable.geode) {
+        const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        nextState.robots.geode += 1
+        nextState.resources.ore -= blueprint.geode.ore ?? 0
+        nextState.resources.clay -= blueprint.geode.clay ?? 0
+        nextState.resources.obsidian -= blueprint.geode.obsidian ?? 0
+        const id = makeId(nextState.resources, nextState.robots)
+        if (!allStates.has(id)) {
+          nextStates[id] = (nextState)
+          allStates.add(id)
+        }
+      }
+
+      if (afforable.obsidian) {
+        const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        nextState.robots.obsidian += 1
+        nextState.resources.ore -= blueprint.obsidian.ore ?? 0
+        nextState.resources.clay -= blueprint.obsidian.clay ?? 0
+        nextState.resources.obsidian -= blueprint.obsidian.obsidian ?? 0
+        const id = makeId(nextState.resources, nextState.robots)
+        if (!allStates.has(id)) {
+          nextStates[id] = (nextState)
+          allStates.add(id)
+        }
+      }
+
+      if (afforable.clay) {
+        const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        nextState.robots.clay += 1
+        nextState.resources.ore -= blueprint.clay.ore ?? 0
+        nextState.resources.clay -= blueprint.clay.clay ?? 0
+        nextState.resources.obsidian -= blueprint.clay.obsidian ?? 0
+        const id = makeId(nextState.resources, nextState.robots)
+        if (!allStates.has(id)) {
+          nextStates[id] = (nextState)
+          allStates.add(id)
+        }
+      }
+
+      if (afforable.ore) {
+        const nextState = { resources: { ...nextResources }, robots: { ...nextRobots } }
+        nextState.robots.ore += 1
+        nextState.resources.ore -= blueprint.ore.ore ?? 0
+        nextState.resources.clay -= blueprint.ore.clay ?? 0
+        nextState.resources.obsidian -= blueprint.ore.obsidian ?? 0
+        const id = makeId(nextState.resources, nextState.robots)
+        if (!allStates.has(id)) {
+          nextStates[id] = (nextState)
+          allStates.add(id)
+        }
+      }
+
+      return nextStates
+    }, {})
+
+    //console.log('un')
+    currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode > bestGeodes)
+    if (currentStateStack.length === 0) {
+      currentStateStack = Object.values(nextStateStack).filter(state => state.resources.geode >= bestGeodes)
+    }
+
+    //console.log(currentStateStack)
+    //console.log('###')
+    //console.log('-un')
+    bestGeodes = currentStateStack.reduce((geodes, state) => Math.max(geodes, state.resources.geode), 0)
+    //Object.keys(nextStateStack).forEach(state => allStates.add(state))
+
+    console.log(currentStateStack.length, Object.values(nextStateStack).length, bestGeodes, allStates.size)
+  }
+
+  return bestGeodes
 }
 
 function application() {
   const blueprints = parseBlueprints(data)
+  const results = {}
 
-  simulate(blueprints[0])
+  blueprints.forEach((blueprint, idx) => {
+    const geodes = simulate(blueprint)
+    const quality = (idx + 1) * geodes
+
+    results[idx] = quality
+  })
+
+  console.log(results)
+  console.log(R.sum(Object.values(results)))
 }
 
 application()
